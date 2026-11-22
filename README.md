@@ -1,101 +1,101 @@
 # 🇮🇪 Ireland News Discord Bot
 
-アイルランドの主要ニュースメディアから最新のヘッドラインを毎日自動取得し、**Gemini API（`gemini-4-hydrogen`）** で自然な日本語に翻訳して Discord チャンネルへ投稿する Bot です。
+A lightweight automated bot that fetches the latest headlines from major Irish news outlets every day, translates them into natural Japanese using the **Gemini API (`gemini-4-hydrogen`)**, and posts them to a Discord channel via Webhook.
 
-Google Cloud（**Cloud Run Jobs + Cloud Scheduler + Secret Manager**）または **GitHub Actions** を使って、サーバーを常時起動せずに低コスト（無料枠中心）で毎日定時実行できます。
-
----
-
-## 主な特徴
-
-- **アイルランド主要3メディアを網羅**（RSSフィードから自動取得）
-  - **RTÉ News**（アイルランド国営放送）
-  - **The Irish Times**（主要全国紙）
-  - **TheJournal.ie**（主要オンラインニュースメディア）
-- **自然な日本語ヘッドライン翻訳**
-  - Gemini API（`google-genai` SDK / JSON構造化出力）で全見出しを一括翻訳（1日1リクエスト）
-- **見やすい Discord Embed 形式**
-  - メディアごとに色分けされたカード形式で、記事リンク付きの日本語ヘッドラインを投稿
-- **柔軟なタイムゾーン・スケジュール設定**
-  - デフォルトでアイルランド時間（`Europe/Dublin`、夏時間・冬時間自動対応）の日付表示に対応
+Runs serverlessly on **Google Cloud (Cloud Run Jobs + Cloud Scheduler + Secret Manager)** or **GitHub Actions** at minimal cost (largely within free tiers), with no always-on server required.
 
 ---
 
-## アーキテクチャ（GCP 構成）
+## Features
+
+- **Covers 3 major Irish news outlets** (via RSS feeds):
+  - **RTÉ News** (Ireland's national public service broadcaster)
+  - **The Irish Times** (Ireland's leading national newspaper)
+  - **TheJournal.ie** (major Irish online news publication)
+- **Natural Japanese headline translation**:
+  - Uses the official `google-genai` Python SDK with structured JSON output to translate all headlines in a single daily API call.
+- **Clean Discord Embed layout**:
+  - Posts color-coded embeds per news source with clickable links to each original article.
+- **Timezone & schedule aware**:
+  - Defaults to Ireland local time (`Europe/Dublin`, with automatic IST/GMT daylight saving support) for both scheduling and date headers.
+
+---
+
+## Architecture (Google Cloud)
 
 ```text
-Cloud Scheduler (毎日 08:00 Europe/Dublin)
+Cloud Scheduler (Daily 08:00 Europe/Dublin)
         │  HTTP POST (OAuth)
         ▼
 Cloud Run Jobs (ireland-news-bot)
-   ├── Secret Manager から APIキー / Webhook URL を取得
-   ├── アイルランド3メディアの RSS を取得
-   ├── Gemini API (gemini-4-hydrogen) で日本語翻訳
-   └── Discord Webhook へ Embed 投稿
+   ├── Loads API key & Webhook URL from Secret Manager
+   ├── Fetches RSS feeds from 3 Irish news outlets
+   ├── Translates headlines via Gemini API (gemini-4-hydrogen)
+   └── Posts formatted embeds to Discord Webhook
 ```
 
 ---
 
-## ファイル構成
+## Project Structure
 
-| ファイル | 役割 |
+| File | Description |
 | --- | --- |
-| `main.py` | RSS取得・Gemini翻訳・Discord投稿を行うメインスクリプト |
-| `requirements.txt` | Python 依存パッケージ一覧 |
-| `Dockerfile` | Cloud Run Jobs 用コンテナ定義（Python 3.12-slim） |
-| `deploy_gcp.sh` | GCP（Secret Manager / Cloud Run Jobs / Cloud Scheduler）一括デプロイスクリプト |
-| `.github/workflows/daily_news.yml` | GitHub Actions で定期実行する場合のワークフロー定義 |
-| `.env.example` | 環境変数のテンプレート |
+| `main.py` | Main script for fetching RSS feeds, translating with Gemini, and posting to Discord |
+| `requirements.txt` | Python dependencies |
+| `Dockerfile` | Container image definition for Cloud Run Jobs (`python:3.12-slim`) |
+| `deploy_gcp.sh` | One-shot deployment script for Secret Manager, Cloud Run Jobs, and Cloud Scheduler |
+| `.github/workflows/daily_news.yml` | GitHub Actions workflow for scheduled daily runs |
+| `.env.example` | Environment variable template |
 
 ---
 
-## 環境変数
+## Environment Variables
 
-| 変数名 | 必須 | デフォルト値 | 説明 |
+| Variable | Required | Default | Description |
 | --- | :---: | --- | --- |
-| `GEMINI_API_KEY` | ✅ | - | Google AI Studio で発行した Gemini API キー |
-| `DISCORD_WEBHOOK_URL` | ✅ | - | 投稿先 Discord チャンネルの Webhook URL |
-| `GEMINI_MODEL` | - | `gemini-4-hydrogen` | 翻訳に使用する Gemini モデル ID |
-| `HEADLINES_PER_SOURCE` | - | `5` | 1メディアあたりの取得件数 |
-| `DISPLAY_TZ` | - | `Europe/Dublin` | 投稿メッセージ内の日付表示に使うタイムゾーン（例：`Asia/Tokyo`） |
+| `GEMINI_API_KEY` | ✅ | - | Gemini API key from Google AI Studio |
+| `DISCORD_WEBHOOK_URL` | ✅ | - | Target Discord channel Webhook URL |
+| `GEMINI_MODEL` | - | `gemini-4-hydrogen` | Gemini model ID used for translation |
+| `HEADLINES_PER_SOURCE` | - | `5` | Number of headlines to fetch per news outlet |
+| `DISPLAY_TZ` | - | `Europe/Dublin` | IANA timezone for the date shown in Discord posts (e.g. `Asia/Tokyo`) |
 
 ---
 
-## 事前準備
+## Prerequisites
 
-1. **Discord Webhook URL の取得**
-   - 投稿したいサーバーの **サーバー設定** → **連携サービス** → **ウェブフック** → **新しいウェブフック** から投稿先チャンネルを選び、URLをコピーします。
-2. **Gemini API キーの取得**
-   - [Google AI Studio](https://aistudio.google.com/apikey) で API キーを作成します。
+1. **Discord Webhook URL**
+   - In your Discord server, go to **Server Settings** → **Integrations** → **Webhooks** → **New Webhook**, choose the target text channel, and copy the Webhook URL.
+2. **Gemini API Key**
+   - Create an API key in [Google AI Studio](https://aistudio.google.com/apikey).
 
 ---
 
-## 実行方法
+## Deployment & Usage
 
-### 方法 1：GCP（Cloud Run Jobs + Cloud Scheduler）で運用する（推奨）
+### Option 1: Google Cloud (Cloud Run Jobs + Cloud Scheduler) — Recommended
 
-#### Cloud Shell または `gcloud` CLI から一括デプロイ
+#### Deploy via Cloud Shell or `gcloud` CLI
 
 ```bash
 chmod +x deploy_gcp.sh
-export PROJECT_ID="あなたのGCPプロジェクトID"
-export GEMINI_API_KEY="あなたのGemini APIキー"
-export DISCORD_WEBHOOK_URL="あなたのDiscord Webhook URL"
+export PROJECT_ID="your-gcp-project-id"
+export GEMINI_API_KEY="your-gemini-api-key"
+export DISCORD_WEBHOOK_URL="your-discord-webhook-url"
 
-# 任意：配信時刻やタイムゾーンを変更する場合
+# Optional: customize schedule and timezone
 export SCHEDULE="0 8 * * *"
-export TIME_ZONE="Europe/Dublin"   # 日本時間にする場合は "Asia/Tokyo"
+export TIME_ZONE="Europe/Dublin"   # Use "Asia/Tokyo" for JST
 
 ./deploy_gcp.sh
 ```
 
-#### 手動テスト実行
+#### Run a manual test execution
 
 ```bash
 gcloud run jobs execute ireland-news-bot --region asia-northeast1 --wait
 ```
 
-#### モデルや件数の設定だけ変更する
+#### Update model or headline count without rebuilding
 
 ```bash
 gcloud run jobs update ireland-news-bot \
@@ -105,17 +105,17 @@ gcloud run jobs update ireland-news-bot \
 
 ---
 
-### 方法 2：GitHub Actions で運用する（GCP 不要）
+### Option 2: GitHub Actions (No GCP Required)
 
-1. リポジトリの **Settings** → **Secrets and variables** → **Actions** に以下を登録：
+1. Go to your repository's **Settings** → **Secrets and variables** → **Actions** and add:
    - `GEMINI_API_KEY`
    - `DISCORD_WEBHOOK_URL`
-2. **Actions** タブ → **Daily Ireland News to Discord** → **Run workflow** で動作テスト
-3. 配信時刻を変更したい場合は `.github/workflows/daily_news.yml` の `cron`（UTC基準）を編集します。
+2. Open the **Actions** tab → **Daily Ireland News to Discord** → **Run workflow** to test.
+3. To change the delivery time, edit the UTC `cron` schedule in `.github/workflows/daily_news.yml`.
 
 ---
 
-### 方法 3：ローカル環境でテスト実行する
+### Option 3: Run Locally
 
 ```bash
 python -m venv .venv
@@ -124,12 +124,12 @@ python -m venv .venv
 
 pip install -r requirements.txt
 cp .env.example .env
-# .env に GEMINI_API_KEY と DISCORD_WEBHOOK_URL を記入して実行
+# Fill in GEMINI_API_KEY and DISCORD_WEBHOOK_URL in .env, then run:
 python main.py
 ```
 
 ---
 
-## ライセンス
+## License
 
 MIT License
